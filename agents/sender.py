@@ -1,6 +1,8 @@
 """
-Email Sender — Resend API.
-Compatible with resend >= 2.0.0
+Email Sender
+============
+Delivers the final HTML email via Resend.
+Supports comma-separated recipients in EMAIL_TO.
 """
 import os, datetime
 from dotenv import load_dotenv
@@ -11,38 +13,34 @@ def send_brief(html: str, brief: dict) -> bool:
     import resend
     resend.api_key = os.environ["RESEND_API_KEY"]
 
-    to_raw = os.getenv("EMAIL_TO", "")
-    recipients = [e.strip() for e in to_raw.split(",") if e.strip()]
+    recipients = [e.strip() for e in os.getenv("EMAIL_TO", "").split(",") if e.strip()]
     if not recipients:
-        raise ValueError("EMAIL_TO is empty in .env — add your email address")
+        raise ValueError("EMAIL_TO is empty in .env")
 
-    from_addr = os.getenv("EMAIL_FROM", "onboarding@resend.dev")
-
-    style    = brief.get("style", "DAILY")
-    episode  = brief.get("episode", 1)
     date_str = brief.get("date", datetime.date.today().strftime("%Y-%m-%d"))
     try:
         display_date = datetime.datetime.strptime(date_str, "%Y-%m-%d").strftime("%b %d")
     except Exception:
         display_date = date_str
 
-    subject = f"🤖 AI Roast Brief — {display_date} | {style} Edition (#{episode})"
+    subject = (
+        f"🤖 AI Roast Brief — {display_date} | "
+        f"{brief.get('style', 'DAILY')} Edition (#{brief.get('episode', 1)})"
+    )
 
-    print(f"[Sender] Sending to: {recipients}")
+    print(f"[Sender] To: {recipients}")
     print(f"[Sender] Subject: {subject}")
 
     try:
-        # resend >= 2.0 uses resend.Emails.send()
-        response = resend.Emails.send({
-            "from": from_addr,
-            "to": recipients,
+        resp = resend.Emails.send({
+            "from":    os.getenv("EMAIL_FROM", "onboarding@resend.dev"),
+            "to":      recipients,
             "subject": subject,
-            "html": html,
+            "html":    html,
         })
-        # Response is an object in newer versions, dict in older
-        rid = response.id if hasattr(response, "id") else response.get("id", "unknown")
-        print(f"[Sender] ✓ Sent! Resend ID: {rid}")
+        rid = resp.id if hasattr(resp, "id") else resp.get("id", "unknown")
+        print(f"[Sender] ✓ Sent — Resend ID: {rid}")
         return True
     except Exception as e:
-        print(f"[Sender] ✗ Failed: {e}")
+        print(f"[Sender] ✗ {e}")
         return False
