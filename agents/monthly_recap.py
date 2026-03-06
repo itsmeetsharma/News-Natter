@@ -219,7 +219,7 @@ def send_recap_email(audio_bytes: bytes, script: str, period: str) -> bool:
   </div>
 
   <p style="font-family:monospace;font-size:11px;color:#3a3a42;text-align:center;margin:0;">
-    AI Roast Brief · Fortnightly Recap · Groq + ElevenLabs
+    AI Roast Brief · Fortnightly Recap
   </p>
 
 </body></html>"""

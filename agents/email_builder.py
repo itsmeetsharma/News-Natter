@@ -266,7 +266,7 @@ def build_email(brief: dict) -> str:
     <!-- FOOTER -->
     <div style="text-align:center;padding-top:16px;border-top:1px solid {t['border']};">
       <p style="font-family:{t['font_mono']};font-size:11px;color:{t['gray']};margin:0;">
-        AI Roast Brief &nbsp;·&nbsp; Daily at 7AM IST &nbsp;·&nbsp; Powered by CrewAI + Groq
+        AI Roast Brief &nbsp;·&nbsp; Daily at 7AM IST
       </p>
       <p style="font-family:{t['font_mono']};font-size:11px;color:{t['gray']};margin:6px 0 0 0;">
         Tomorrow brings more. Stay curious. Stay dangerous.
