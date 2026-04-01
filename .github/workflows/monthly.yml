@@ -2,10 +2,9 @@ name: AI Roast Brief — Fortnightly Recap
 
 on:
   schedule:
-    - cron: '30 2 1 * *'   # 1st of month  → 8:00 AM IST
-    - cron: '30 2 16 * *'  # 16th of month → 8:00 AM IST
-
-  workflow_dispatch:        # Manual trigger for testing
+    - cron: '30 2 1 * *'    # 1st of month  → 8:00 AM IST
+    - cron: '30 2 16 * *'   # 16th of month → 8:00 AM IST
+  workflow_dispatch:
 
 jobs:
   fortnightly-recap:
@@ -13,27 +12,23 @@ jobs:
     timeout-minutes: 20
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: 'pip'
 
-      - name: Install dependencies
-        run: pip install -r requirements.txt
+      - run: pip install -r requirements.txt
 
       - name: Run fortnightly recap
         env:
-          GROQ_API_KEY:        ${{ secrets.GROQ_API_KEY }}
-          GEMINI_API_KEY:      ${{ secrets.GEMINI_API_KEY }}
-          RESEND_API_KEY:      ${{ secrets.RESEND_API_KEY }}
-          EMAIL_FROM:          ${{ secrets.EMAIL_FROM }}
-          EMAIL_TO:            ${{ secrets.EMAIL_TO }}
-          ELEVENLABS_API_KEY:  ${{ secrets.ELEVENLABS_API_KEY }}
-          ELEVENLABS_VOICE_ID: ${{ secrets.ELEVENLABS_VOICE_ID }}
-          GROQ_MODEL:          llama-3.3-70b-versatile
-          GEMINI_MODEL:        gemini-2.0-flash
-        run: python -c "from agents.monthly_recap import run_fortnightly_recap; run_fortnightly_recap()"
+          GROQ_API_KEY:   ${{ secrets.GROQ_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          EMAIL_FROM:     ${{ secrets.EMAIL_FROM }}
+          EMAIL_TO:       ${{ secrets.EMAIL_TO }}
+          SARVAM_API_KEY: ${{ secrets.SARVAM_API_KEY }}
+          GROQ_MODEL:     llama-3.3-70b-versatile
+          GEMINI_MODEL:   gemini-2.0-flash
+        run: python -c "from agents.monthly_recap_v2 import run_fortnightly_recap; run_fortnightly_recap()"

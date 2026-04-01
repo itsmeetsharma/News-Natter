@@ -1,18 +1,19 @@
 """
-Fortnightly Audio Recap
-=======================
-Runs every 15 days (1st and 16th of each month).
-Groq writes a standup script (Bassi opening + Samay quick hits)
-→ ElevenLabs converts to MP3 → Resend emails it with audio attached.
+Fortnightly Audio Recap — v2
+=============================
+Uses Sarvam AI Bulbul v3 with Shubh voice.
+Bulbul v3 supports 2500 chars/request so a ~4700 char script
+needs only 2 chunks. Clean stitched MP3 output.
 
-Free tier math:
-  ElevenLabs: 10,000 chars/month
-  Each script: ~4,500 chars
-  2 runs/month = ~9,000 chars ✓
+Free credits: Rs.1000 (never expire) ~140 recaps at Rs.14 each (v3 rate).
+Voice: Shubh — male, conversational, Indian English
 """
-import os, json, datetime, requests
+import os, json, datetime, requests, re, base64
 from dotenv import load_dotenv
 load_dotenv()
+
+SARVAM_TTS_URL = "https://api.sarvam.ai/text-to-speech"
+CHUNK_SIZE     = 2000   # bulbul:v3 limit is 2500 — stay comfortably under
 
 
 # ── PROMPT ────────────────────────────────────────────────────
@@ -20,75 +21,46 @@ load_dotenv()
 STANDUP_PROMPT = """You are writing a spoken comedy script covering the biggest AI news from the last 15 days.
 
 YOUR STYLE:
-- Opening story: Anubhav Singh Bassi — slow build, full context, Indian everyday angle, dramatic pause before punchline
-- Remaining 4 stories: Samay Raina podcast energy — fast, sharp, conversational, still Indian
+- Opening story: Anubhav Singh Bassi — slow build, full context, Indian everyday angle
+- Remaining 4 stories: Samay Raina podcast energy — fast, sharp, conversational
 
-This is NOT western standup. No rapid-fire punchlines. Indian storytelling comedy.
+NOT western standup. Indian storytelling comedy.
 
-═══════════════════════════
-SECTION 1 — OPENING STORY (Bassi style, ~2 minutes)
-═══════════════════════════
-Pick the single BIGGEST or most absurd story from the list.
+IMPORTANT — PLAIN TEXT ONLY. NO XML, NO TAGS, NO ANGLE BRACKETS.
+Create rhythm through sentence structure:
+- Short sentences. Full stops. Natural gaps.
+- Use "..." max 3 times for dramatic effect only
+- Punctuation creates the rhythm
 
-Structure:
-1. Set the full scene — who these people are, what they do, why anyone cares.
-   Explain like you're telling a friend who doesn't follow tech. No jargon without explanation.
-   2-3 sentences. Conversational.
+SECTION 1 — OPENING STORY (Bassi style, ~2 minutes):
+1. Set the scene. Who these people are. What they do. Why anyone cares.
+   Like telling a friend over chai. Short sentences.
+2. What everyone expected. What was promised. The hype.
+3. What actually happened. The gap between promise and reality.
+4. One observation. One sentence. Then one that twists it.
+5. Relate to something every Indian understands — job pressure,
+   relatives asking about future, board exams, jugaad.
 
-2. <break time="0.5s" /> What everyone expected. What the company promised. The hype. Slightly exaggerated.
+SECTION 2 — FOUR QUICK HITS (Samay style):
+Each story: "Okay so [company] did [thing]. [What it means plainly]. [The funny observation]."
+Three sentences. Done. Move on.
 
-3. <break time="0.8s" /> What actually happened. The gap between promise and reality.
-   Or if it was genuinely good — what's suspicious about it.
-
-4. <break time="1.2s" /> One sentence observation. Let it land.
-   <break time="1.0s" /> One more sentence that twists it.
-   <break time="1.5s" />
-
-5. Relate to something every Indian understands — job pressure, relatives asking about future,
-   board exams, startup culture, jugaad. This is the Bassi moment.
-   <break time="1.0s" />
-
-═══════════════════════════
-SECTION 2 — FOUR QUICK HITS (Samay style, 30-40 sec each)
-═══════════════════════════
-Cover remaining 4 stories. Each one EXACTLY like this:
-
-"Okay so [company] did [thing]. <break time="0.4s" />
-[One sentence — what this actually means in plain words]. <break time="0.6s" />
-[The observation — what's funny or ironic]. <break time="1.0s" />"
-
-No over-explaining. No extra sentences. Move on immediately.
-Think Samay reacting to chess drama — quick, sharp, done.
-
-═══════════════════════════
-PAUSE REFERENCE
-═══════════════════════════
-<break time="0.4s" /> = small breath between related sentences
-<break time="0.6s" /> = before an observation
-<break time="0.8s" /> = before a punchline
-<break time="1.0s" /> = after any punchline — let it breathe
-<break time="1.2s" /> = Bassi dramatic pause before main joke
-<break time="1.5s" /> = after the biggest laugh of opening story
-
-═══════════════════════════
-HARD RULES
-═══════════════════════════
-- NO opening greeting. Start mid-thought about this fortnight's AI vibe.
-- Write for the EAR. Zero markdown, zero bullets, zero headers.
-- ONLY <break time="Xs" /> tags allowed — nothing else
-- Total: 600-750 words MAX (keeps under 5000 chars for ElevenLabs free tier)
-- Roast companies and hype. NEVER the listener.
-- Hindi words fine if natural: yaar, matlab, bhai, waise, basically
-- Do NOT explain the joke. Do NOT say "get it?" or "am I right?"
-- End with: one useful thing to try + warm sign-off. Not a joke.
+HARD RULES:
+- NO XML or angle bracket tags whatsoever
+- NO opening greeting — start mid-thought
+- Plain text only
+- 600-700 words MAX
+- Roast companies. Never the listener.
+- Hindi words fine: yaar, matlab, bhai, waise
+- End with one useful thing to try + warm sign-off
 
 Period: {period}
-Stories (pick best 1 for opening, remaining 4 for quick hits):
+Stories:
 ---
 {stories_text}
 ---
 
-Write the full script now.
+Write the full script now. Plain text only.
 """
 
 
@@ -104,62 +76,110 @@ def write_standup_script(stories: list, period: str) -> str:
         stories_text += f"   What: {s.get('what', '')}\n"
         stories_text += f"   Roast: {s.get('roast', '')}\n\n"
 
-    prompt = STANDUP_PROMPT.format(period=period, stories_text=stories_text)
-
-    print(f"[Recap] Writing standup script for {period}...")
-    script = call_llm(prompt, expect_json=False, temperature=0.95)
-    char_count = len(script)
-    print(f"[Recap] Script: {char_count} chars (~{char_count // 900} min spoken)")
-
-    # Hard cap — ElevenLabs free tier safety
-    if char_count > 4800:
-        print("[Recap] ⚠ Too long — trimming to protect free tier quota")
-        script = script[:4700] + " <break time='1.0s' /> That's the fortnight in AI. Stay curious, yaar."
-
+    print(f"[Recap] Writing script for {period}...")
+    script = call_llm(
+        STANDUP_PROMPT.format(period=period, stories_text=stories_text),
+        expect_json=False,
+        temperature=0.95,
+    )
+    # Strip any XML tags the LLM snuck in anyway
+    script = re.sub(r"<[^>]+>", "", script).strip()
+    print(f"[Recap] Script: {len(script)} chars")
     return script
 
 
-# ── ELEVENLABS TTS ────────────────────────────────────────────
+# ── SARVAM TTS ────────────────────────────────────────────────
 
-def text_to_speech(script: str) -> bytes | None:
-    api_key  = os.getenv("ELEVENLABS_API_KEY")
-    voice_id = os.getenv("ELEVENLABS_VOICE_ID", "nPczCjzI2devNBz1zQrb")  # Brian
+def _chunk_text(text: str, size: int = CHUNK_SIZE) -> list:
+    """
+    Split at sentence boundaries, max `size` chars per chunk.
+    With bulbul:v3's 2500 char limit and size=2000,
+    a 4700 char script becomes just 2-3 clean chunks.
+    """
+    parts   = re.split(r"(?<=[.!?])\s+", text)
+    chunks  = []
+    current = ""
 
-    if not api_key:
-        raise ValueError("ELEVENLABS_API_KEY missing from .env")
+    for part in parts:
+        if len(current) + len(part) + 1 <= size:
+            current = (current + " " + part).strip()
+        else:
+            if current:
+                chunks.append(current)
+            # Single sentence longer than chunk — hard split
+            if len(part) > size:
+                for i in range(0, len(part), size):
+                    chunks.append(part[i:i+size])
+                current = ""
+            else:
+                current = part
 
-    print(f"[ElevenLabs] {len(script)} chars → voice {voice_id}")
+    if current:
+        chunks.append(current)
 
+    return chunks
+
+
+def _sarvam_chunk(api_key: str, text: str) -> bytes | None:
+    """Call Sarvam bulbul:v3 for one chunk. Returns WAV bytes or None."""
     try:
         resp = requests.post(
-            f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}",
+            SARVAM_TTS_URL,
             headers={
-                "xi-api-key":   api_key,
-                "Content-Type": "application/json",
-                "Accept":       "audio/mpeg",
+                "api-subscription-key": api_key,
+                "Content-Type":         "application/json",
             },
             json={
-                "text":     script,
-                "model_id": "eleven_turbo_v2",  # supports <break> SSML tags
-                "voice_settings": {
-                    "stability":         0.35,  # lower = more expressive range
-                    "similarity_boost":  0.75,
-                    "style":             0.45,  # storytelling rhythm
-                    "use_speaker_boost": True,
-                },
+                "inputs":               [text],
+                "target_language_code": "en-IN",
+                "speaker":              "shubh",      # v3 default, Indian English male
+                "model":                "bulbul:v3",  # Shubh is v3 voice
+                "speech_sample_rate":   24000,         # v3 default
+                "pace":                 0.9,           # slightly slower for storytelling
+                "temperature":          0.7,           # expressive but stable
             },
-            timeout=120,
+            timeout=60,
         )
+
         if resp.status_code == 200:
-            size_kb = len(resp.content) // 1024
-            print(f"[ElevenLabs] ✓ {size_kb} KB audio ready")
-            return resp.content
-        err = resp.json()
-        print(f"[ElevenLabs] ✗ {resp.status_code}: {err.get('detail', {}).get('message', resp.text)}")
+            audio_b64 = resp.json().get("audios", [None])[0]
+            if audio_b64:
+                return base64.b64decode(audio_b64)
+            print(f"[Sarvam] No audio in response: {resp.json()}")
+            return None
+
+        print(f"[Sarvam] {resp.status_code}: {resp.text[:300]}")
         return None
-    except requests.RequestException as e:
-        print(f"[ElevenLabs] ✗ {e}")
+
+    except Exception as e:
+        print(f"[Sarvam] Request error: {e}")
         return None
+
+
+def text_to_speech(script: str) -> bytes | None:
+    api_key = os.getenv("SARVAM_API_KEY")
+    if not api_key:
+        raise ValueError("SARVAM_API_KEY missing from .env")
+
+    chunks = _chunk_text(script)
+    print(f"[Sarvam] {len(script)} chars split into {len(chunks)} chunks")
+
+    parts = []
+    for i, chunk in enumerate(chunks):
+        print(f"[Sarvam] Chunk {i+1}/{len(chunks)} — {len(chunk)} chars")
+        audio = _sarvam_chunk(api_key, chunk)
+        if audio:
+            parts.append(audio)
+        else:
+            print(f"[Sarvam] Chunk {i+1} failed — skipping")
+
+    if not parts:
+        print("[Sarvam] All chunks failed")
+        return None
+
+    combined = b"".join(parts)
+    print(f"[Sarvam] Done — {len(combined)//1024} KB ({len(parts)}/{len(chunks)} chunks ok)")
+    return combined
 
 
 # ── EMAIL ─────────────────────────────────────────────────────
@@ -173,41 +193,33 @@ def send_recap_email(audio_bytes: bytes, script: str, period: str) -> bool:
         raise ValueError("EMAIL_TO missing from .env")
 
     safe_period = period.replace(" ", "-").replace("–", "to")
-    filename    = f"AI-Roast-{safe_period}.mp3"
-
-    # Strip <break> tags from the readable script version in email body
-    import re
-    readable_script = re.sub(r"<break[^/]*/>\s*", " ", script).strip()
+    filename    = f"AI-Roast-{safe_period}.wav"
 
     html = f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"></head>
 <body style="background:#0e0e10;color:#f0f0f4;
              font-family:'Helvetica Neue',Arial,sans-serif;
              max-width:600px;margin:0 auto;padding:32px 24px;">
-
   <div style="border-bottom:3px solid #00ff88;padding-bottom:20px;margin-bottom:28px;">
     <div style="font-size:12px;color:#808090;font-family:monospace;
                 text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">
       Fortnightly Audio Recap
     </div>
     <h1 style="font-size:26px;font-weight:800;color:#ffe566;margin:0 0 6px 0;">
-      🎙️ AI Roast Brief
+      AI Roast Brief
     </h1>
     <p style="font-size:15px;color:#b0b0c0;margin:0;">{period}</p>
   </div>
-
   <div style="background:#001a0d;border:1px solid #003322;border-left:4px solid #00ff88;
               border-radius:8px;padding:18px 20px;margin-bottom:24px;">
     <p style="font-family:monospace;font-size:12px;color:#00ff88;
               text-transform:uppercase;letter-spacing:.5px;margin:0 0 8px 0;">
-      ▶ AUDIO ATTACHED
+      AUDIO ATTACHED
     </p>
     <p style="font-size:14px;color:#b0b0c0;margin:0;line-height:1.6;">
-      Download <strong style="color:#fff">{filename}</strong> — ~5 min.
-      Bassi-style opening, Samay-style quick hits.
+      Download <strong style="color:#fff">{filename}</strong> and listen on your commute. ~5 min.
     </p>
   </div>
-
   <div style="background:#17171a;border:1px solid #2c2c32;border-radius:8px;
               padding:20px;margin-bottom:24px;">
     <p style="font-family:monospace;font-size:11px;color:#808090;
@@ -215,51 +227,47 @@ def send_recap_email(audio_bytes: bytes, script: str, period: str) -> bool:
       Full Script
     </p>
     <p style="font-size:14px;color:#b0b0c0;line-height:1.9;margin:0;
-              white-space:pre-wrap;">{readable_script}</p>
+              white-space:pre-wrap;">{script}</p>
   </div>
-
   <p style="font-family:monospace;font-size:11px;color:#3a3a42;text-align:center;margin:0;">
     AI Roast Brief · Fortnightly Recap
   </p>
-
 </body></html>"""
 
     try:
         resp = resend.Emails.send({
             "from":    os.getenv("EMAIL_FROM", "onboarding@resend.dev"),
             "to":      recipients,
-            "subject": f"🎙️ AI Roast Recap — {period}",
+            "subject": f"AI Roast Recap — {period}",
             "html":    html,
             "attachments": [{
                 "filename":     filename,
                 "content":      list(audio_bytes),
-                "content_type": "audio/mpeg",
+                "content_type": "audio/wav",
             }],
         })
         rid = resp.id if hasattr(resp, "id") else resp.get("id", "unknown")
-        print(f"[Sender] ✓ Sent — {rid}")
+        print(f"[Sender] Sent — {rid}")
         return True
     except Exception as e:
-        print(f"[Sender] ✗ {e}")
+        print(f"[Sender] {e}")
         return False
 
 
 def _send_script_only(script: str, period: str):
-    """Fallback: email just the script if TTS fails."""
-    import resend, re
+    import resend
     resend.api_key = os.environ["RESEND_API_KEY"]
-    readable = re.sub(r"<break[^/]*/>\s*", " ", script).strip()
     recipients = [e.strip() for e in os.getenv("EMAIL_TO", "").split(",") if e.strip()]
     try:
         resend.Emails.send({
             "from":    os.getenv("EMAIL_FROM", "onboarding@resend.dev"),
             "to":      recipients,
-            "subject": f"🎙️ AI Roast Recap — {period} (script only, audio failed)",
-            "html":    f"<pre style='font-family:sans-serif;line-height:1.9;white-space:pre-wrap'>{readable}</pre>",
+            "subject": f"AI Roast Recap — {period} (script only, audio failed)",
+            "html":    f"<pre style='font-family:sans-serif;line-height:1.9'>{script}</pre>",
         })
-        print("[Fallback] ✓ Script-only email sent")
+        print("[Fallback] Script-only email sent")
     except Exception as e:
-        print(f"[Fallback] ✗ {e}")
+        print(f"[Fallback] {e}")
 
 
 # ── STORY COLLECTOR ───────────────────────────────────────────
@@ -268,23 +276,19 @@ def collect_stories() -> list:
     brief_path = os.path.join(os.path.dirname(__file__), "..", "last_brief.json")
     try:
         with open(brief_path, encoding="utf-8") as f:
-            brief = json.load(f)
-        stories = brief.get("stories", [])
-        print(f"[Recap] {len(stories)} stories from last_brief.json")
+            stories = json.load(f).get("stories", [])
+        print(f"[Recap] {len(stories)} stories loaded")
         return stories
     except FileNotFoundError:
         print("[Recap] No last_brief.json — using placeholder")
         return [{"headline": "AI had a wild fortnight", "source": "Various",
-                 "what": "Many things happened.", "roast": "AGI is still 6 months away."}]
+                 "what": "Many things happened.", "roast": "AGI still 6 months away."}]
 
 
 # ── ENTRY POINT ───────────────────────────────────────────────
 
 def run_fortnightly_recap():
     today = datetime.date.today()
-
-    # 1st of month  → recap of 16th–end of last month
-    # 16th of month → recap of 1st–15th of this month
     if today.day == 1:
         end   = today - datetime.timedelta(days=1)
         start = end.replace(day=16)
@@ -292,10 +296,10 @@ def run_fortnightly_recap():
         start = today.replace(day=1)
         end   = today.replace(day=15)
 
-    period = f"{start.strftime('%b %d')} – {end.strftime('%b %d, %Y')}"
+    period = f"{start.strftime('%b %d')} - {end.strftime('%b %d, %Y')}"
 
     print("\n" + "=" * 60)
-    print(f"  🎙️  AI ROAST FORTNIGHTLY RECAP")
+    print(f"  FORTNIGHTLY RECAP v2 — Sarvam bulbul:v3 / Shubh")
     print(f"  Period: {period}")
     print(f"  {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 60 + "\n")
@@ -305,18 +309,11 @@ def run_fortnightly_recap():
     audio   = text_to_speech(script)
 
     if not audio:
-        print("\n[!] TTS failed — sending script only")
         _send_script_only(script, period)
         return
 
-    success = send_recap_email(audio, script, period)
-    if not success:
-        print("\n✗ Email failed")
-        return
-
-    print("\n" + "=" * 60)
-    print(f"  ✓ DONE — {period}")
-    print("=" * 60 + "\n")
+    send_recap_email(audio, script, period)
+    print(f"\n  DONE — {period}\n")
 
 
 if __name__ == "__main__":
