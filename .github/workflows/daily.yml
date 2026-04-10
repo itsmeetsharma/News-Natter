@@ -1,11 +1,8 @@
-name: AI Roast Brief — Daily
+name: News Natter — Daily Brief
 
 on:
-  # Every day at 01:30 UTC = 7:00 AM IST
   schedule:
-    - cron: '30 1 * * *'
-
-  # Also lets you trigger manually from GitHub Actions tab
+    - cron: '30 1 * * *'   # 01:30 UTC = 7:00 AM IST
   workflow_dispatch:
     inputs:
       style:
@@ -21,7 +18,7 @@ on:
           - TERMINAL
           - MAGAZINE
       dry_run:
-        description: 'Dry run (build email but do not send)'
+        description: 'Dry run — build email but do not send'
         required: false
         type: boolean
         default: false
@@ -32,30 +29,27 @@ jobs:
     timeout-minutes: 15
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: 'pip'
 
-      - name: Install dependencies
-        run: pip install -r requirements.txt
+      - run: pip install -r requirements.txt
 
-      - name: Run pipeline
+      - name: Run daily pipeline
         env:
-          GROQ_API_KEY:       ${{ secrets.GROQ_API_KEY }}
-          GEMINI_API_KEY:     ${{ secrets.GEMINI_API_KEY }}
-          SERPER_API_KEY:     ${{ secrets.SERPER_API_KEY }}
-          RESEND_API_KEY:     ${{ secrets.RESEND_API_KEY }}
-          EMAIL_FROM:         ${{ secrets.EMAIL_FROM }}
-          EMAIL_TO:           ${{ secrets.EMAIL_TO }}
-          IMGFLIP_USERNAME:   ${{ secrets.IMGFLIP_USERNAME }}
-          IMGFLIP_PASSWORD:   ${{ secrets.IMGFLIP_PASSWORD }}
-          GROQ_MODEL:         llama-3.3-70b-versatile
-          GEMINI_MODEL:       gemini-2.0-flash
+          GROQ_API_KEY:     ${{ secrets.GROQ_API_KEY }}
+          GEMINI_API_KEY:   ${{ secrets.GEMINI_API_KEY }}
+          SERPER_API_KEY:   ${{ secrets.SERPER_API_KEY }}
+          RESEND_API_KEY:   ${{ secrets.RESEND_API_KEY }}
+          EMAIL_FROM:       ${{ secrets.EMAIL_FROM }}
+          EMAIL_TO:         ${{ secrets.EMAIL_TO }}
+          IMGFLIP_USERNAME: ${{ secrets.IMGFLIP_USERNAME }}
+          IMGFLIP_PASSWORD: ${{ secrets.IMGFLIP_PASSWORD }}
+          GROQ_MODEL:       llama-3.3-70b-versatile
+          GEMINI_MODEL:     gemini-2.0-flash
         run: |
           ARGS=""
           if [ "${{ github.event.inputs.style }}" != "" ]; then
@@ -74,10 +68,10 @@ jobs:
           path: output.html
           retention-days: 3
 
-      - name: Commit updated episode counter
+      - name: Commit episode counter
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add episode.txt last_brief.json || true
-          git diff --staged --quiet || git commit -m "chore: episode $(cat episode.txt) sent [skip ci]"
+          git diff --staged --quiet || git commit -m "chore: episode $(cat episode.txt) [skip ci]"
           git push || true
