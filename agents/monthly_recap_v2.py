@@ -242,7 +242,7 @@ def send_recap_email(audio_bytes: bytes, script: str, period: str) -> bool:
             "html":    html,
             "attachments": [{
                 "filename":     filename,
-                "content":      list(audio_bytes),
+                "content":      __import__("base64").b64encode(audio_bytes).decode("utf-8"),
                 "content_type": "audio/wav",
             }],
         })
