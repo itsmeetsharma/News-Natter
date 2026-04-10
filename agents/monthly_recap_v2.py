@@ -2,8 +2,8 @@
 Fortnightly Audio Recap — v2
 =============================
 Uses Sarvam AI Bulbul v3 with Shubh voice.
-Bulbul v3 supports 2500 chars/request so a ~4700 char script
-needs only 2 chunks. Clean stitched MP3 output.
+Actual API limit is 500 chars/request. A ~3000 char script
+needs ~7 chunks. Stitched into one WAV output.
 
 Free credits: Rs.1000 (never expire) ~140 recaps at Rs.14 each (v3 rate).
 Voice: Shubh — male, conversational, Indian English
@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 SARVAM_TTS_URL = "https://api.sarvam.ai/text-to-speech"
-CHUNK_SIZE     = 2000   # bulbul:v3 limit is 2500 — stay comfortably under
+CHUNK_SIZE     = 450    # actual API limit is 500 — stay under with buffer
 
 
 # ── PROMPT ────────────────────────────────────────────────────
