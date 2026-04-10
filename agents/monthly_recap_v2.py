@@ -8,7 +8,7 @@ needs ~7 chunks. Stitched into one WAV output.
 Free credits: Rs.1000 (never expire) ~140 recaps at Rs.14 each (v3 rate).
 Voice: Shubh — male, conversational, Indian English
 """
-import os, json, datetime, requests, re, base64
+import os, json, datetime, requests, re, base64, io
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -182,6 +182,44 @@ def text_to_speech(script: str) -> bytes | None:
     return combined
 
 
+# ── AUDIO CONVERTER ──────────────────────────────────────────
+
+def wav_to_mp3(wav_bytes: bytes) -> bytes:
+    """
+    Convert WAV bytes to MP3 using ffmpeg (available on GitHub Actions).
+    Reduces file size from ~8MB to ~800KB.
+    Falls back to raw WAV if ffmpeg not available.
+    """
+    import subprocess, tempfile, os
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as wav_file:
+            wav_file.write(wav_bytes)
+            wav_path = wav_file.name
+
+        mp3_path = wav_path.replace(".wav", ".mp3")
+
+        result = subprocess.run(
+            ["ffmpeg", "-i", wav_path, "-codec:a", "libmp3lame",
+             "-qscale:a", "4", "-y", mp3_path],
+            capture_output=True, timeout=60
+        )
+
+        if result.returncode == 0 and os.path.exists(mp3_path):
+            with open(mp3_path, "rb") as f:
+                mp3_bytes = f.read()
+            os.unlink(wav_path)
+            os.unlink(mp3_path)
+            print(f"[Audio] WAV {len(wav_bytes)//1024}KB → MP3 {len(mp3_bytes)//1024}KB")
+            return mp3_bytes
+        else:
+            print(f"[Audio] ffmpeg failed — using WAV")
+            os.unlink(wav_path)
+            return wav_bytes
+    except Exception as e:
+        print(f"[Audio] Conversion error: {e} — using WAV")
+        return wav_bytes
+
+
 # ── EMAIL ─────────────────────────────────────────────────────
 
 def send_recap_email(audio_bytes: bytes, script: str, period: str) -> bool:
@@ -234,6 +272,11 @@ def send_recap_email(audio_bytes: bytes, script: str, period: str) -> bool:
   </p>
 </body></html>"""
 
+    # Convert WAV to MP3 to reduce file size before emailing
+    audio_final  = wav_to_mp3(audio_bytes)
+    final_name   = filename.replace(".wav", ".mp3")
+    final_type   = "audio/mpeg"
+
     try:
         resp = resend.Emails.send({
             "from":    os.getenv("EMAIL_FROM", "onboarding@resend.dev"),
@@ -241,16 +284,18 @@ def send_recap_email(audio_bytes: bytes, script: str, period: str) -> bool:
             "subject": f"AI Roast Recap — {period}",
             "html":    html,
             "attachments": [{
-                "filename":     filename,
-                "content":      __import__("base64").b64encode(audio_bytes).decode("utf-8"),
-                "content_type": "audio/wav",
+                "filename":     final_name,
+                "content":      list(audio_final),
+                "content_type": final_type,
             }],
         })
-        rid = resp.id if hasattr(resp, "id") else resp.get("id", "unknown")
+        print(f"[Sender] Raw response: {resp}")
+        rid = resp.id if hasattr(resp, "id") else (resp.get("id") if isinstance(resp, dict) else None)
         print(f"[Sender] Sent — {rid}")
         return True
     except Exception as e:
-        print(f"[Sender] {e}")
+        print(f"[Sender] Error type: {type(e).__name__}")
+        print(f"[Sender] Error: {e}")
         return False
 
 
