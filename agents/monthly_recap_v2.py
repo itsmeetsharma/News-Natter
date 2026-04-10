@@ -170,8 +170,9 @@ def text_to_speech(script: str) -> bytes | None:
         audio = _sarvam_chunk(api_key, chunk)
         if audio:
             parts.append(audio)
+            print(f"[Sarvam] Chunk {i+1} ok — {len(audio)//1024}KB")
         else:
-            print(f"[Sarvam] Chunk {i+1} failed — skipping")
+            print(f"[Sarvam] Chunk {i+1} FAILED — chunk text: {chunk[:80]!r}")
 
     if not parts:
         print("[Sarvam] All chunks failed")
