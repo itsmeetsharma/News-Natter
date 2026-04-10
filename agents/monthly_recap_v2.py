@@ -275,10 +275,9 @@ def send_recap_email(audio_bytes: bytes, script: str, period: str) -> bool:
     # Convert WAV to MP3 to reduce file size before emailing
     audio_final  = wav_to_mp3(audio_bytes)
     final_name   = filename.replace(".wav", ".mp3")
-    final_type   = "audio/mpeg"
 
     try:
-        resp = resend.Emails.send({
+        params = {
             "from":    os.getenv("EMAIL_FROM", "onboarding@resend.dev"),
             "to":      recipients,
             "subject": f"AI Roast Recap — {period}",
@@ -286,9 +285,11 @@ def send_recap_email(audio_bytes: bytes, script: str, period: str) -> bool:
             "attachments": [{
                 "filename":     final_name,
                 "content":      list(audio_final),
-                "content_type": final_type,
+                "content_type": "audio/mpeg",
             }],
-        })
+        }
+        print(f"[Sender] Sending to {recipients} from {params['from']}")
+        resp = resend.Emails.send(params)
         print(f"[Sender] Raw response: {resp}")
         rid = resp.id if hasattr(resp, "id") else (resp.get("id") if isinstance(resp, dict) else None)
         print(f"[Sender] Sent — {rid}")
