@@ -8,7 +8,7 @@ needs ~7 chunks. Stitched into one WAV output.
 Free credits: Rs.1000 (never expire) ~140 recaps at Rs.14 each (v3 rate).
 Voice: Shubh — male, conversational, Indian English
 """
-import os, json, datetime, requests, re, base64, io
+import os, json, datetime, requests, re, base64, io, time
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -173,6 +173,7 @@ def text_to_speech(script: str) -> bytes | None:
             print(f"[Sarvam] Chunk {i+1} ok — {len(audio)//1024}KB")
         else:
             print(f"[Sarvam] Chunk {i+1} FAILED — chunk text: {chunk[:80]!r}")
+        time.sleep(1)  # 1 second between chunks — avoids rate limiting
 
     if not parts:
         print("[Sarvam] All chunks failed")
