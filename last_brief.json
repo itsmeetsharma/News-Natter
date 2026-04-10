@@ -1,0 +1,72 @@
+{
+  "date": "2026-03-05",
+  "style": "STARTUP",
+  "episode": 6,
+  "tagline": "AI takes center",
+  "stories": [
+    {
+      "id": 1,
+      "headline": "Apple's Visual AI Push",
+      "source": "Bloomberg",
+      "what": "Apple plans to release new devices with advanced visual AI capabilities, including the iPhone 17e and iPad Air with an M4 chip. The company is also working on an entry-level iPad with the A18 processor. These devices are expected to arrive in spring 2026.",
+      "why": "Developers should care because Apple's push into visual AI could lead to new opportunities for creating AI-powered apps and services for Apple devices. This could also drive innovation in the field of visual AI.",
+      "use_today": "https://developer.apple.com/",
+      "roast": "Apple's finally catching up",
+      "meme_ref": "galaxy_brain",
+      "vibe": "hype",
+      "meme_url": "https://i.imgflip.com/altbia.jpg"
+    },
+    {
+      "id": 2,
+      "headline": "AI-Generated Video Detection",
+      "source": "today.com",
+      "what": "A recent report provides tips on how to spot AI-generated videos on social media, including looking for inconsistencies in lighting and sound. AI-generated videos can be highly convincing and potentially misleading.",
+      "why": "Students and developers should care because being able to identify AI-generated content is crucial in today's digital landscape, where misinformation can spread quickly.",
+      "use_today": "Check your social media feeds",
+      "roast": "Fake news gets a new face",
+      "meme_ref": "npc",
+      "vibe": "thoughtful",
+      "meme_url": "https://i.imgflip.com/altbid.jpg"
+    },
+    {
+      "id": 3,
+      "headline": "Brain Implant Breakthrough",
+      "source": "youtube.com",
+      "what": "A paraplegic individual has received a brain implant that allows them to control devices with their thoughts. The implant uses AI to decode brain signals and translate them into digital commands.",
+      "why": "Developers should care because this technology demonstrates the potential of AI to improve people's lives and could lead to new innovations in the field of brain-computer interfaces.",
+      "use_today": "Explore brain-computer interface research",
+      "roast": "Mind control is real now",
+      "meme_ref": "galaxy_brain",
+      "vibe": "bullish",
+      "meme_url": null
+    },
+    {
+      "id": 4,
+      "headline": "AI News for March 2026",
+      "source": "aiapps.com",
+      "what": "The AI landscape is rapidly evolving, with major breakthroughs in areas such as edge AI, multimodal AI, and agentic AI. New hardware and software launches are also driving growth in the industry.",
+      "why": "Developers and students should care because staying up-to-date with the latest AI trends and breakthroughs is essential for building innovative and competitive AI-powered products and services.",
+      "use_today": "Read the latest AI research papers",
+      "roast": "AI is growing up fast",
+      "meme_ref": "okay",
+      "vibe": "interesting",
+      "meme_url": "https://i.imgflip.com/altbin.jpg"
+    },
+    {
+      "id": 5,
+      "headline": "Google Deepmind's Gemini 3.1 Pro",
+      "source": "kucoin.com",
+      "what": "Google Deepmind has unveiled Gemini 3.1 Pro, a new AI model with advanced reasoning capabilities and a massive 1 million-token context window. This breakthrough has significant implications for the development of more sophisticated AI models.",
+      "why": "Developers should care because these breakthroughs demonstrate the rapid progress being made in the field of AI and could lead to new opportunities for building more advanced AI-powered applications.",
+      "use_today": "https://www.deepmind.com/",
+      "roast": "Google's AI game is strong",
+      "meme_ref": "galaxy_brain",
+      "vibe": "hype",
+      "meme_url": "https://i.imgflip.com/altbir.jpg"
+    }
+  ],
+  "power_move": "Review the latest AI research papers before noon to stay ahead of the curve. Take 15 minutes to explore new breakthroughs and innovations.",
+  "power_move_time": "15 min",
+  "stat_stories": "5",
+  "stat_cost": "₹0"
+}
